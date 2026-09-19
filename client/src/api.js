@@ -29,3 +29,27 @@ export const gameApi = {
     body: JSON.stringify(seed === undefined || seed === null ? {} : { seed })
   })
 };
+
+export const restrictionApi = {
+  list: (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.islandId) params.set('islandId', filters.islandId);
+    if (filters.status) params.set('status', filters.status);
+    const query = params.toString();
+    return request(`/api/restrictions${query ? `?${query}` : ''}`);
+  },
+  audit: (islandId) => {
+    const params = new URLSearchParams();
+    if (islandId) params.set('islandId', islandId);
+    const query = params.toString();
+    return request(`/api/restrictions/audit${query ? `?${query}` : ''}`);
+  },
+  register: (input) => request('/api/restrictions', {
+    method: 'POST',
+    body: JSON.stringify(input)
+  }),
+  revoke: (ruleId, reason) => request(`/api/restrictions/${encodeURIComponent(ruleId)}/revoke`, {
+    method: 'POST',
+    body: JSON.stringify({ reason })
+  })
+};

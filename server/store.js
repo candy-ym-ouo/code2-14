@@ -73,6 +73,7 @@ function hasValidStateShape(state) {
   if (!Number.isInteger(state.revision) || state.revision < 0) return false;
   if (!Array.isArray(state.islands) || !Array.isArray(state.couriers)) return false;
   if (!Array.isArray(state.letters) || !Array.isArray(state.history)) return false;
+  if (!Array.isArray(state.restrictions) || !Array.isArray(state.restrictionEvents)) return false;
   if (!isPlainObject(state.wind) || !isPlainObject(state.relations)) return false;
   if (!hasValidReport(state.lastReport)) return false;
   if (!hasValidEnding(state.ending)) return false;
@@ -135,6 +136,29 @@ function hasValidStateShape(state) {
       Number.isFinite(value)
     );
   })) return false;
+
+  if (!state.restrictions.every((rule) => (
+    isPlainObject(rule) &&
+    typeof rule.id === 'string' &&
+    Number.isInteger(rule.sequence) && rule.sequence > 0 &&
+    islandIds.has(rule.islandId) && rule.islandId !== 'skyport' &&
+    Number.isInteger(rule.startDay) && Number.isInteger(rule.startHour) &&
+    Number.isInteger(rule.endDay) && Number.isInteger(rule.endHour) &&
+    Number.isInteger(rule.priority) &&
+    typeof rule.reason === 'string' &&
+    typeof rule.note === 'string' &&
+    typeof rule.registeredAt === 'string' &&
+    (rule.revokedAt === null || typeof rule.revokedAt === 'string') &&
+    (rule.revokedReason === null || typeof rule.revokedReason === 'string')
+  ))) return false;
+  if (!state.restrictionEvents.every((event) => (
+    isPlainObject(event) &&
+    Number.isInteger(event.sequence) && event.sequence > 0 &&
+    ['register', 'revoke'].includes(event.type) &&
+    typeof event.at === 'string' &&
+    typeof event.ruleId === 'string' &&
+    islandIds.has(event.islandId)
+  ))) return false;
   return true;
 }
 
@@ -168,6 +192,14 @@ function normalizeStoredState(parsed) {
         changed = true;
       }
     }
+  }
+  if (!Array.isArray(parsed.restrictions)) {
+    parsed.restrictions = [];
+    changed = true;
+  }
+  if (!Array.isArray(parsed.restrictionEvents)) {
+    parsed.restrictionEvents = [];
+    changed = true;
   }
   return { state: parsed, changed };
 }

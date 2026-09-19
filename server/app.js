@@ -3,6 +3,7 @@ import path from 'node:path';
 import express from 'express';
 import { advanceDay, GameRuleError, previewPlan, publicGameState } from './engine.js';
 import { assertPlanningPhase } from './store.js';
+import { describeRestrictions, registerRestriction, revokeRestriction } from './restrictions.js';
 
 function getAssignments(body) {
   if (body === undefined || body === null) {
@@ -66,6 +67,59 @@ export function createApp({ store, clientDist }) {
       report,
       state: publicGameState(store.getState())
     });
+  });
+
+  app.get('/api/restrictions', (request, response) => {
+    const { islandId, status } = request.query;
+    const filters = {};
+    if (typeof islandId === 'string' && islandId) filters.islandId = islandId;
+    if (typeof status === 'string' && status) filters.status = status;
+    response.json({ restrictions: describeRestrictions(store.getState(), filters) });
+  });
+
+  app.get('/api/restrictions/audit', (request, response) => {
+    const { islandId } = request.query;
+    const filters = islandId ? { islandId: String(islandId) } : {};
+    const { events, rules } = describeRestrictions(store.getState(), filters);
+    response.json({
+      events,
+      rules: rules.map((rule) => ({
+        ruleId: rule.id,
+        islandId: rule.islandId,
+        islandName: rule.islandName,
+        startDay: rule.startDay,
+        startHour: rule.startHour,
+        endDay: rule.endDay,
+        endHour: rule.endHour,
+        priority: rule.priority,
+        reason: rule.reason,
+        note: rule.note,
+        registeredAt: rule.registeredAt,
+        revokedAt: rule.revokedAt,
+        revokedReason: rule.revokedReason,
+        status: rule.status
+      }))
+    });
+  });
+
+  app.post('/api/restrictions', (request, response) => {
+    const result = store.mutate((state) => {
+      assertPlanningPhase(state);
+      return registerRestriction(state, request.body);
+    });
+    response.status(201).json({
+      restriction: result.rule,
+      overlaps: result.overlaps,
+      state: publicGameState(store.getState())
+    });
+  });
+
+  app.post('/api/restrictions/:ruleId/revoke', (request, response) => {
+    const restriction = store.mutate((state) => {
+      assertPlanningPhase(state);
+      return revokeRestriction(state, request.params.ruleId, request.body?.reason);
+    });
+    response.json({ restriction, state: publicGameState(store.getState()) });
   });
 
   app.post('/api/game/reset', (request, response) => {

@@ -1,3 +1,5 @@
+import { findGoverningRule, getRestrictionStatus, DAY_HOURS } from './restrictions.js';
+
 export const GAME_VERSION = 1;
 export const HUB_ID = 'skyport';
 
@@ -256,6 +258,8 @@ export function createInitialState({ seed = Date.now(), days = 14 } = {}) {
     couriers: structuredClone(COURIERS),
     relations: buildInitialRelations(),
     letters,
+    restrictions: [],
+    restrictionEvents: [],
     history: [],
     lastReport: null,
     ending: null,
@@ -516,6 +520,43 @@ function urgencyPenalty(urgency) {
   return urgency === 3 ? 2 : urgency === 2 ? 1.2 : 0.6;
 }
 
+function formatWindow(rule) {
+  return `第 ${rule.startDay} 日 ${String(rule.startHour).padStart(2, '0')}:00 – 第 ${rule.endDay} 日 ${String(rule.endHour).padStart(2, '0')}:00`;
+}
+
+/**
+ * 按预计抵达时刻检查各航段是否撞上岛屿临时管制。
+ * 窗口采用半开区间 [起始, 结束)：抵达时刻等于结束时刻视为管制已解除。
+ */
+function applyRestrictionControls(state, routes, issues) {
+  for (const route of routes) {
+    for (const result of route.letters) {
+      const absoluteHour = (state.day - 1) * DAY_HOURS + result.arrivalHour;
+      const governing = findGoverningRule(state.restrictions, result.targetIslandId, absoluteHour);
+      if (governing) {
+        result.restricted = true;
+        result.restrictionRuleId = governing.id;
+        result.restrictionReason = governing.reason;
+        result.restrictionWindow = formatWindow(governing);
+        issues.push({
+          code: 'ISLAND_RESTRICTED',
+          message: `${route.courierName} 预计 ${formatHourLabel(result.arrivalHour)} 抵达${result.targetName}，正处于临时管制时段（${formatWindow(governing)}），该岛暂停接收投递。`,
+          letterId: result.letterId,
+          ruleId: governing.id,
+          restrictionReason: governing.reason
+        });
+      } else {
+        result.restricted = false;
+      }
+    }
+  }
+}
+
+function formatHourLabel(value) {
+  const totalMinutes = Math.round(value * 60);
+  return `${String(Math.floor(totalMinutes / 60)).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
+}
+
 export function previewPlan(state, rawAssignments = []) {
   const validation = validateAssignmentPlan(state, rawAssignments);
   const assignedIds = new Set(validation.assignments.map((assignment) => assignment.letterId));
@@ -525,6 +566,9 @@ export function previewPlan(state, rawAssignments = []) {
         .map((courier) => calculateRoute(state, courier.id, validation.routes.get(courier.id)))
         .filter((route) => route.letterCount > 0)
     : [];
+  if (validation.issues.length === 0) {
+    applyRestrictionControls(state, preparedRoutes, validation.issues);
+  }
   const projection = preparedRoutes.length || !validation.issues.length
     ? collectPlanEffects(state, preparedRoutes, unassignedLetters)
     : emptyProjection();
@@ -658,9 +702,20 @@ export function advanceDay(state, rawAssignments = []) {
   return report;
 }
 
+function publicRestrictionSafe(state, rule) {
+  const island = getIsland(state, rule.islandId);
+  return {
+    ...rule,
+    islandName: island ? island.name : rule.islandId,
+    islandCode: island ? island.code : '',
+    status: getRestrictionStatus(rule, state.day)
+  };
+}
+
 export function publicGameState(state) {
   return {
     ...state,
+    restrictions: state.restrictions.map((rule) => publicRestrictionSafe(state, rule)),
     openLetterCount: getOpenLetters(state).length,
     averageRelation: Object.keys(state.relations).length
       ? round(Object.values(state.relations).reduce((sum, value) => sum + value, 0) / Object.keys(state.relations).length, 1)

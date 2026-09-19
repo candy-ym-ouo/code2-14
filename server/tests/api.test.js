@@ -177,3 +177,128 @@ test('旧存档中的越界状态会在加载时迁移并写回', () => {
   assert.deepEqual(persisted, migrated);
   fs.rmSync(temporaryDirectory, { recursive: true, force: true });
 });
+
+test('管制登记、查询、撤销与审计台账形成完整闭环，并拦截受管制投递', async (context) => {
+  const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'sky-post-restriction-api-'));
+  const store = new GameStore(path.join(temporaryDirectory, 'state.json'), { seed: 'restriction-api-seed' });
+  store.load();
+  const server = createApp({ store, clientDist: null }).listen(0);
+  context.after(() => {
+    server.close();
+    fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+  });
+
+  await new Promise((resolve) => server.once('listening', resolve));
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  const request = async (url, options) => {
+    const response = await fetch(`${baseUrl}${url}`, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options
+    });
+    return { status: response.status, body: await response.json() };
+  };
+
+  const gameResponse = await request('/api/game');
+  const game = gameResponse.body.state;
+  const sunLetter = game.letters.find((letter) => letter.recipientIslandId === 'sun');
+  assert.ok(sunLetter);
+
+  const registerResponse = await request('/api/restrictions', {
+    method: 'POST',
+    body: JSON.stringify({
+      islandId: 'sun',
+      startDay: 1,
+      startHour: 0,
+      endDay: 1,
+      endHour: 23,
+      priority: 7,
+      reason: '风暴警戒',
+      note: '禁止当日全部投递'
+    })
+  });
+  assert.equal(registerResponse.status, 201);
+  assert.equal(registerResponse.body.restriction.id, 'R001');
+  assert.equal(registerResponse.body.restriction.status, 'active');
+  assert.equal(registerResponse.body.state.restrictions.length, 1);
+  assert.equal(registerResponse.body.state.revision, game.revision + 1);
+
+  const listResponse = await request('/api/restrictions?status=active');
+  assert.equal(listResponse.status, 200);
+  assert.equal(listResponse.body.restrictions.rules.length, 1);
+  assert.equal(listResponse.body.restrictions.rules[0].islandName, '曦光岛');
+
+  const blockedAssignment = {
+    letterId: sunLetter.id,
+    courierId: 'comet',
+    targetIslandId: 'sun',
+    order: 0
+  };
+  const blockedPreview = await request('/api/game/plan/preview', {
+    method: 'POST',
+    body: JSON.stringify({ assignments: [blockedAssignment] })
+  });
+  assert.equal(blockedPreview.status, 200);
+  assert.equal(blockedPreview.body.preview.valid, false);
+  assert.ok(blockedPreview.body.preview.issues.some((issue) => issue.code === 'ISLAND_RESTRICTED'));
+
+  const blockedAdvance = await request('/api/game/day/advance', {
+    method: 'POST',
+    body: JSON.stringify({ assignments: [blockedAssignment], expectedRevision: registerResponse.body.state.revision })
+  });
+  assert.equal(blockedAdvance.status, 400);
+
+  const invalidRegister = await request('/api/restrictions', {
+    method: 'POST',
+    body: JSON.stringify({ islandId: 'sun', startDay: 1, startHour: 18, endDay: 1, endHour: 18, reason: 'x' })
+  });
+  assert.equal(invalidRegister.status, 400);
+
+  const revokeResponse = await request('/api/restrictions/R001/revoke', {
+    method: 'POST',
+    body: JSON.stringify({ reason: '风暴解除' })
+  });
+  assert.equal(revokeResponse.status, 200);
+  assert.equal(revokeResponse.body.restriction.status, 'revoked');
+
+  const doubleRevoke = await request('/api/restrictions/R001/revoke', {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
+  assert.equal(doubleRevoke.status, 409);
+
+  const missingRule = await request('/api/restrictions/R999/revoke', {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
+  assert.equal(missingRule.status, 404);
+
+  const auditResponse = await request('/api/restrictions/audit');
+  assert.equal(auditResponse.status, 200);
+  assert.equal(auditResponse.body.events.length, 2);
+  assert.deepEqual(auditResponse.body.events.map((event) => event.type), ['revoke', 'register']);
+  const archived = auditResponse.body.rules.find((rule) => rule.ruleId === 'R001');
+  assert.equal(archived.status, 'revoked');
+  assert.equal(archived.revokedReason, '风暴解除');
+
+  const allowedPreview = await request('/api/game/plan/preview', {
+    method: 'POST',
+    body: JSON.stringify({ assignments: [blockedAssignment] })
+  });
+  assert.equal(allowedPreview.body.preview.valid, true);
+});
+
+test('缺少管制台账字段的旧存档会在加载时补齐', () => {
+  const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'sky-post-restriction-migration-'));
+  const dataFile = path.join(temporaryDirectory, 'state.json');
+  const store = new GameStore(dataFile, { seed: 'legacy-restrictions' });
+  const state = store.load();
+  delete state.restrictions;
+  delete state.restrictionEvents;
+  fs.writeFileSync(dataFile, JSON.stringify(state), 'utf8');
+
+  const migrated = new GameStore(dataFile, { seed: 'ignored' }).load();
+
+  assert.deepEqual(migrated.restrictions, []);
+  assert.deepEqual(migrated.restrictionEvents, []);
+  fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+});

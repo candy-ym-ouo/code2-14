@@ -12,6 +12,17 @@ export default function MapPanel({ game, preview }) {
   const islandMap = new Map(game.islands.map((island) => [island.id, island]));
   const hub = islandMap.get('skyport');
   const openLetters = game.letters.filter((letter) => ['inbox', 'backlog'].includes(letter.status));
+  const controlledIslandIds = new Set(
+    (game.restrictions || [])
+      .filter((rule) => rule.status === 'active')
+      .map((rule) => rule.islandId)
+  );
+  const restrictedRouteIslandIds = new Set();
+  for (const route of preview?.routes || []) {
+    for (const letter of route.letters || []) {
+      if (letter.restricted) restrictedRouteIslandIds.add(letter.targetIslandId);
+    }
+  }
 
   return (
     <section className="panel map-panel" aria-labelledby="map-title">
@@ -52,15 +63,23 @@ export default function MapPanel({ game, preview }) {
 
           {game.islands.map((island) => {
             const isHub = island.id === 'skyport';
+            const controlled = controlledIslandIds.has(island.id);
+            const routeBlocked = restrictedRouteIslandIds.has(island.id);
             return (
               <g
                 key={island.id}
-                className={`map-island ${isHub ? 'is-hub' : ''}`}
+                className={`map-island ${isHub ? 'is-hub' : ''} ${controlled ? 'is-controlled' : ''} ${routeBlocked ? 'is-route-blocked' : ''}`}
                 transform={`translate(${island.position.x} ${island.position.y})`}
               >
                 <circle className="island-halo" r={isHub ? 10 : 8} fill="url(#islandGlow)" />
                 <circle className="island-body" r={isHub ? 6 : 5} fill={island.color} filter="url(#softGlow)" />
                 <circle className="island-core" r={isHub ? 2.2 : 1.7} />
+                {controlled && (
+                  <g className="control-mark">
+                    <circle className="control-ring" r={6.6} />
+                    <text className="control-glyph" y={1.6}>⛔</text>
+                  </g>
+                )}
                 <text y={isHub ? -8.5 : -7.5} textAnchor="middle">{island.name}</text>
                 {!isHub && <text className="island-code" y="10" textAnchor="middle">{island.code}</text>}
               </g>
@@ -71,6 +90,7 @@ export default function MapPanel({ game, preview }) {
         <div className="map-legend">
           <span><i className="legend-dot" style={{ background: hub?.color }} /> 天枢邮港</span>
           <span><i className="legend-line" /> 今日路线</span>
+          <span><i className="legend-control">⛔</i> 临时管制</span>
         </div>
       </div>
     </section>

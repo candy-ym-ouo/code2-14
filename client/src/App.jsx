@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { gameApi } from './api.js';
+import ControlPanel from './components/ControlPanel.jsx';
 import FleetPanel from './components/FleetPanel.jsx';
 import LetterCard from './components/LetterCard.jsx';
 import MapPanel from './components/MapPanel.jsx';
@@ -154,6 +155,11 @@ function App() {
     }
   }
 
+  function syncRestrictionState(nextState) {
+    setGame(nextState);
+    setPreviewState(null);
+  }
+
   async function resetGame() {
     if (!window.confirm('重新开局会覆盖当前存档，确定继续吗？')) return;
     setBusy(true);
@@ -245,6 +251,7 @@ function App() {
             <WeatherPanel wind={game.wind} />
             <RelationsPanel game={game} relationChanges={projection?.relationChanges} />
           </div>
+          <ControlPanel game={game} onStateChange={syncRestrictionState} onError={setError} />
         </div>
 
         <div className="planning-column">

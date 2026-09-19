@@ -1638,3 +1638,422 @@ code {
     padding: 30px 20px;
   }
 }
+
+/* ===== 岛屿临时管制登记 ===== */
+.control-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.restriction-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.restriction-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.restriction-field.span-2,
+.restriction-window.span-2,
+.restriction-form-actions.span-2,
+.overlap-notice.span-2 {
+  grid-column: 1 / -1;
+}
+
+.restriction-field input,
+.restriction-field select,
+.restriction-window input,
+.revoke-form input {
+  padding: 8px 10px;
+  color: var(--bg);
+  border: 1px solid rgba(130, 203, 235, 0.35);
+  border-radius: 10px;
+  background: rgba(234, 243, 255, 0.94);
+}
+
+.restriction-window {
+  padding: 12px 14px 14px;
+  margin: 0;
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+}
+
+.restriction-window legend {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.window-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.window-inputs label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.window-inputs input {
+  width: 64px;
+  text-align: center;
+}
+
+.window-inputs i {
+  color: var(--cyan);
+  font-style: normal;
+}
+
+.restriction-form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.restriction-submit {
+  padding: 9px 20px;
+  color: #06202c;
+  font-weight: 700;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--cyan), #83e8d3);
+  cursor: pointer;
+}
+
+.overlap-notice {
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #ffe8bd;
+  border: 1px solid rgba(255, 198, 92, 0.4);
+  border-radius: 12px;
+  background: rgba(87, 62, 18, 0.45);
+}
+
+.overlap-notice ul {
+  margin: 6px 0 8px;
+  padding-left: 18px;
+}
+
+.overlap-notice li {
+  margin: 3px 0;
+}
+
+.overlap-notice button {
+  border: 1px solid rgba(255, 198, 92, 0.5);
+  border-radius: 8px;
+  color: #ffe8bd;
+  background: transparent;
+  padding: 3px 12px;
+  cursor: pointer;
+}
+
+.restriction-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 12px 22px 0;
+}
+
+.restriction-tabs button {
+  flex: 1;
+  padding: 7px 4px;
+  color: var(--muted);
+  font-size: 12px;
+  border: 1px solid transparent;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+}
+
+.restriction-tabs button b {
+  margin-left: 3px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+.restriction-tabs button.active {
+  color: var(--cyan);
+  border-bottom-color: var(--cyan);
+}
+
+.restriction-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 22px;
+}
+
+.restriction-empty,
+.audit-empty {
+  padding: 8px 2px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.restriction-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--muted);
+  border-radius: 12px;
+  background: rgba(13, 29, 46, 0.6);
+}
+
+.restriction-row.status-active {
+  border-left-color: var(--red);
+}
+
+.restriction-row.status-scheduled {
+  border-left-color: var(--amber);
+}
+
+.restriction-row.status-expired {
+  border-left-color: var(--muted);
+  opacity: 0.72;
+}
+
+.restriction-row.status-revoked {
+  border-left-color: #5f7185;
+  opacity: 0.62;
+}
+
+.restriction-row-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.restriction-row-head code {
+  color: var(--cyan);
+  font-size: 12px;
+}
+
+.restriction-priority {
+  padding: 1px 8px;
+  color: var(--amber);
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 198, 92, 0.4);
+  border-radius: 999px;
+}
+
+.restriction-status {
+  padding: 1px 9px;
+  font-size: 11px;
+  border-radius: 999px;
+}
+
+.restriction-status.status-active {
+  color: #ffb3b3;
+  background: rgba(255, 123, 123, 0.16);
+}
+
+.restriction-status.status-scheduled {
+  color: #ffe3ad;
+  background: rgba(255, 198, 92, 0.16);
+}
+
+.restriction-status.status-expired,
+.restriction-status.status-revoked {
+  color: var(--muted);
+  background: rgba(128, 150, 173, 0.14);
+}
+
+.restriction-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.restriction-row-meta code {
+  color: #a9c7dd;
+  font-size: 11px;
+}
+
+.restriction-row-meta em {
+  color: #748aa0;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.restriction-row-revoked {
+  margin-top: 4px;
+  color: #748aa0;
+  font-size: 11px;
+}
+
+.restriction-row-actions {
+  flex: 0 0 auto;
+}
+
+.revoke-button,
+.revoke-confirm {
+  padding: 6px 14px;
+  color: #ffb3b3;
+  font-size: 12px;
+  border: 1px solid rgba(255, 123, 123, 0.45);
+  border-radius: 999px;
+  background: rgba(255, 123, 123, 0.1);
+  cursor: pointer;
+}
+
+.revoke-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.revoke-form input {
+  width: 190px;
+  padding: 6px 9px;
+}
+
+.revoke-form button[type="button"] {
+  padding: 6px 10px;
+  color: var(--muted);
+  font-size: 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.restriction-audit {
+  border-top: 1px solid var(--line);
+  padding: 12px 22px 16px;
+}
+
+.audit-toggle {
+  width: 100%;
+  padding: 9px;
+  color: var(--cyan);
+  font-size: 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.audit-ledger {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 10px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.audit-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  font-size: 11px;
+  color: var(--muted);
+  border-radius: 9px;
+  background: rgba(8, 20, 33, 0.6);
+}
+
+.audit-entry .audit-type {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.audit-register .audit-type {
+  color: #bfe3ff;
+  background: rgba(138, 167, 255, 0.18);
+}
+
+.audit-revoke .audit-type {
+  color: #ffc4c4;
+  background: rgba(255, 123, 123, 0.16);
+}
+
+.audit-entry code {
+  color: var(--cyan);
+  font-size: 11px;
+}
+
+.audit-entry time {
+  margin-left: auto;
+  color: #6d8299;
+}
+
+.audit-entry > code + strong + code {
+  color: #a9c7dd;
+}
+
+.audit-hint {
+  color: #6d8299;
+  font-size: 11px;
+}
+
+.restricted-chip {
+  padding: 1px 8px;
+  color: #ffb3b3;
+  font-size: 11px;
+  border: 1px solid rgba(255, 123, 123, 0.45);
+  border-radius: 999px;
+  background: rgba(255, 123, 123, 0.12);
+}
+
+.control-ring {
+  fill: none;
+  stroke: var(--red);
+  stroke-width: 0.9;
+  stroke-dasharray: 2.2 1.6;
+}
+
+.control-glyph {
+  fill: #ff9d9d;
+  font-size: 5.2px;
+  text-anchor: middle;
+}
+
+.map-island.is-route-blocked .island-body {
+  stroke: var(--red);
+  stroke-width: 1.1;
+}
+
+.legend-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-style: normal;
+  font-size: 12px;
+}
+
+@media (max-width: 720px) {
+  .restriction-form {
+    grid-template-columns: 1fr;
+  }
+
+  .revoke-form {
+    flex-wrap: wrap;
+  }
+
+  .revoke-form input {
+    width: 100%;
+  }
+}

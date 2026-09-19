@@ -39,6 +39,11 @@ function RouteLetter({ entry, index, total, game, routeResult, busy, onChangeTar
           </label>
           <span>{entry.letter.weight.toFixed(1)} kg · 紧急度 {entry.letter.urgency}</span>
           {projection && <span className={`outcome ${outcome?.className || ''}`}>{outcome?.label} {formatHour(projection.arrivalHour)}</span>}
+          {projection?.restricted && (
+            <span className="restricted-chip" title={`${projection.restrictionWindow}｜${projection.restrictionReason}`}>
+              ⛔ {projection.restrictionRuleId} 管制
+            </span>
+          )}
         </div>
       </div>
       <div className="route-letter-buttons">
