@@ -5,6 +5,7 @@ import LetterCard from './components/LetterCard.jsx';
 import MapPanel from './components/MapPanel.jsx';
 import RelationsPanel from './components/RelationsPanel.jsx';
 import ReportDialog from './components/ReportDialog.jsx';
+import RestrictionPanel from './components/RestrictionPanel.jsx';
 import WeatherPanel from './components/WeatherPanel.jsx';
 
 function App() {
@@ -241,6 +242,7 @@ function App() {
       <main className="dashboard">
         <div className="overview-column">
           <MapPanel game={game} preview={preview} />
+          <RestrictionPanel game={game} busy={busy} onChanged={setGame} />
           <div className="overview-split">
             <WeatherPanel wind={game.wind} />
             <RelationsPanel game={game} relationChanges={projection?.relationChanges} />

@@ -1,3 +1,5 @@
+import { restrictionsForToday } from '../restrictions.js';
+
 function routePoints(route, islandMap) {
   const hub = islandMap.get('skyport');
   const points = [`${hub.position.x},${hub.position.y}`];
@@ -52,10 +54,11 @@ export default function MapPanel({ game, preview }) {
 
           {game.islands.map((island) => {
             const isHub = island.id === 'skyport';
+            const todaysRestrictions = isHub ? [] : restrictionsForToday(game.restrictionView, game.day, island.id);
             return (
               <g
                 key={island.id}
-                className={`map-island ${isHub ? 'is-hub' : ''}`}
+                className={`map-island ${isHub ? 'is-hub' : ''} ${todaysRestrictions.length ? 'is-restricted' : ''}`}
                 transform={`translate(${island.position.x} ${island.position.y})`}
               >
                 <circle className="island-halo" r={isHub ? 10 : 8} fill="url(#islandGlow)" />
@@ -63,6 +66,13 @@ export default function MapPanel({ game, preview }) {
                 <circle className="island-core" r={isHub ? 2.2 : 1.7} />
                 <text y={isHub ? -8.5 : -7.5} textAnchor="middle">{island.name}</text>
                 {!isHub && <text className="island-code" y="10" textAnchor="middle">{island.code}</text>}
+                {todaysRestrictions.length > 0 && (
+                  <g className="restriction-badge">
+                    <circle r="2.6" cx="5.2" cy="-5.2" />
+                    <text x="5.2" y="-4.4" textAnchor="middle">!</text>
+                    <title>{todaysRestrictions.map((record) => `${record.id} ${record.window}：${record.reason}`).join('\n')}</title>
+                  </g>
+                )}
               </g>
             );
           })}

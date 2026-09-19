@@ -29,3 +29,15 @@ export const gameApi = {
     body: JSON.stringify(seed === undefined || seed === null ? {} : { seed })
   })
 };
+
+export const restrictionApi = {
+  list: () => request('/api/restrictions').then((body) => body.restrictions),
+  register: (payload) => request('/api/restrictions', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  revoke: (restrictionId, payload = {}) => request(`/api/restrictions/${restrictionId}/revoke`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+};

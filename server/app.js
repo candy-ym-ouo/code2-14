@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import express from 'express';
 import { advanceDay, GameRuleError, previewPlan, publicGameState } from './engine.js';
+import { registerRestriction, revokeRestriction } from './restrictions.js';
 import { assertPlanningPhase } from './store.js';
 
 function getAssignments(body) {
@@ -75,6 +76,36 @@ export function createApp({ store, clientDist }) {
       : String(requestedSeed);
     const state = store.reset(seed);
     response.json({ state: publicGameState(state) });
+  });
+
+  app.get('/api/restrictions', (request, response) => {
+    response.json({ restrictions: publicGameState(store.getState()).restrictionView });
+  });
+
+  app.post('/api/restrictions', (request, response) => {
+    const record = store.mutate((state) => {
+      assertPlanningPhase(state);
+      const created = registerRestriction(state, request.body);
+      state.revision = Number.isInteger(state.revision) ? state.revision + 1 : 1;
+      return created;
+    });
+    response.status(201).json({
+      record,
+      state: publicGameState(store.getState())
+    });
+  });
+
+  app.post('/api/restrictions/:restrictionId/revoke', (request, response) => {
+    const record = store.mutate((state) => {
+      assertPlanningPhase(state);
+      const revoked = revokeRestriction(state, request.params.restrictionId, request.body);
+      state.revision = Number.isInteger(state.revision) ? state.revision + 1 : 1;
+      return revoked;
+    });
+    response.json({
+      record,
+      state: publicGameState(store.getState())
+    });
   });
 
   app.use('/api', (request, response) => {

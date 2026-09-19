@@ -60,6 +60,46 @@ function hasValidEnding(ending) {
   );
 }
 
+function hasValidRestrictions(state) {
+  if (!Array.isArray(state.restrictions) || !Array.isArray(state.restrictionAudit)) return false;
+  if (!Number.isInteger(state.restrictionSeq) || state.restrictionSeq < 0) return false;
+
+  const ids = new Set();
+  for (const record of state.restrictions) {
+    if (!isPlainObject(record)) return false;
+    if (typeof record.id !== 'string' || ids.has(record.id)) return false;
+    ids.add(record.id);
+    if (!Number.isInteger(record.sequence) || record.sequence < 1) return false;
+    if (typeof record.islandId !== 'string' || !state.islands.some((island) => island.id === record.islandId)) return false;
+    if (record.islandId === 'skyport') return false;
+    for (const field of ['startDay', 'startHour', 'endDay', 'endHour', 'priority']) {
+      if (!Number.isInteger(record[field])) return false;
+    }
+    if (record.startDay < 1 || record.endDay < record.startDay || record.endDay > state.days) return false;
+    if (record.startHour < 0 || record.startHour > 24 || record.endHour < 0 || record.endHour > 24) return false;
+    if (record.startDay === record.endDay && record.endHour <= record.startHour) return false;
+    if (record.priority < 1 || record.priority > 10) return false;
+    if (typeof record.reason !== 'string' || typeof record.registeredBy !== 'string') return false;
+    if (typeof record.registeredAt !== 'string') return false;
+    const revoked = record.revokedAt !== null;
+    if (revoked !== (record.revokedBy !== null) || revoked !== (record.revokeReason !== null)) return false;
+    if (revoked && (typeof record.revokedAt !== 'string' || typeof record.revokedBy !== 'string' || typeof record.revokeReason !== 'string')) return false;
+  }
+
+  for (const event of state.restrictionAudit) {
+    if (!isPlainObject(event)) return false;
+    if (typeof event.id !== 'string' || typeof event.restrictionId !== 'string') return false;
+    if (!['register', 'revoke'].includes(event.type)) return false;
+    if (!ids.has(event.restrictionId)) return false;
+    if (typeof event.islandId !== 'string' || typeof event.reason !== 'string') return false;
+    if (typeof event.by !== 'string' || typeof event.at !== 'string') return false;
+    for (const field of ['startDay', 'startHour', 'endDay', 'endHour', 'priority']) {
+      if (!Number.isInteger(event[field])) return false;
+    }
+  }
+  return true;
+}
+
 function hasValidStateShape(state) {
   if (!isPlainObject(state)) return false;
   if (state.version !== GAME_VERSION) return false;
@@ -76,6 +116,7 @@ function hasValidStateShape(state) {
   if (!isPlainObject(state.wind) || !isPlainObject(state.relations)) return false;
   if (!hasValidReport(state.lastReport)) return false;
   if (!hasValidEnding(state.ending)) return false;
+  if (!hasValidRestrictions(state)) return false;
   if (state.phase === 'planning' && state.ending != null) return false;
   if (state.phase !== 'planning' && !hasValidEnding(state.ending)) return false;
 
@@ -168,6 +209,18 @@ function normalizeStoredState(parsed) {
         changed = true;
       }
     }
+  }
+  if (!Array.isArray(parsed.restrictions)) {
+    parsed.restrictions = [];
+    changed = true;
+  }
+  if (!Array.isArray(parsed.restrictionAudit)) {
+    parsed.restrictionAudit = [];
+    changed = true;
+  }
+  if (!Number.isInteger(parsed.restrictionSeq)) {
+    parsed.restrictionSeq = Array.isArray(parsed.restrictions) ? parsed.restrictions.length : 0;
+    changed = true;
   }
   return { state: parsed, changed };
 }

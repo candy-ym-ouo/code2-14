@@ -1,6 +1,8 @@
 export const GAME_VERSION = 1;
 export const HUB_ID = 'skyport';
 
+import { buildRestrictionView, collectRestrictionIssues } from './restrictions.js';
+
 export const HUB_ISLAND = {
   id: 'skyport',
   code: 'SKY',
@@ -259,6 +261,9 @@ export function createInitialState({ seed = Date.now(), days = 14 } = {}) {
     history: [],
     lastReport: null,
     ending: null,
+    restrictions: [],
+    restrictionAudit: [],
+    restrictionSeq: 0,
     createdAt: now,
     updatedAt: now
   };
@@ -520,12 +525,16 @@ export function previewPlan(state, rawAssignments = []) {
   const validation = validateAssignmentPlan(state, rawAssignments);
   const assignedIds = new Set(validation.assignments.map((assignment) => assignment.letterId));
   const unassignedLetters = getOpenLetters(state).filter((letter) => !assignedIds.has(letter.id));
-  const preparedRoutes = validation.issues.length === 0
+  const preparedRoutes = state.phase === 'planning'
     ? state.couriers
         .map((courier) => calculateRoute(state, courier.id, validation.routes.get(courier.id)))
         .filter((route) => route.letterCount > 0)
     : [];
-  const projection = preparedRoutes.length || !validation.issues.length
+  const restrictionIssues = validation.issues.length === 0
+    ? collectRestrictionIssues(state, preparedRoutes)
+    : [];
+  const issues = [...validation.issues, ...restrictionIssues];
+  const projection = issues.length === 0
     ? collectPlanEffects(state, preparedRoutes, unassignedLetters)
     : emptyProjection();
 
@@ -541,8 +550,8 @@ export function previewPlan(state, rawAssignments = []) {
   }
 
   return {
-    valid: validation.issues.length === 0,
-    issues: validation.issues,
+    valid: issues.length === 0,
+    issues,
     warnings,
     routes: preparedRoutes,
     unassignedLetterIds: unassignedLetters.map((letter) => letter.id),
@@ -661,6 +670,7 @@ export function advanceDay(state, rawAssignments = []) {
 export function publicGameState(state) {
   return {
     ...state,
+    restrictionView: buildRestrictionView(state),
     openLetterCount: getOpenLetters(state).length,
     averageRelation: Object.keys(state.relations).length
       ? round(Object.values(state.relations).reduce((sum, value) => sum + value, 0) / Object.keys(state.relations).length, 1)
